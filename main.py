@@ -45,7 +45,7 @@ def preprocess_data(df):
     return preprocessed_signals
 
 
-def extract_features(preprocessed_signals):
+def calculate_psd_for_bands(preprocessed_signals, n_samples):
     bands = {
         "delta": (0.5, 4),
         "theta": (4, 8),
@@ -56,8 +56,11 @@ def extract_features(preprocessed_signals):
     brainwave_features = pd.DataFrame()
 
     for channel, signal in preprocessed_signals.items():
+        # Select the last n_samples from the signal
+        signal_window = signal[-n_samples:]
+
         # Compute PSD using NeuroKit2
-        psd = nk.signal_psd(signal, sampling_rate=250, method="welch")
+        psd = nk.signal_psd(signal_window, sampling_rate=250, method="welch")
 
         # Extract Frequency and Power columns
         freqs = psd["Frequency"].values
@@ -78,10 +81,9 @@ def extract_features(preprocessed_signals):
 
     return brainwave_features
 
-
 db, status = bb.db_connect()
 if status:
     labeled_data = get_and_label_data(db)
     preprocessed_data = preprocess_data(labeled_data)
-    features = extract_features(preprocessed_data)
+    features = calculate_psd_for_bands(preprocessed_data)
     print(features)
