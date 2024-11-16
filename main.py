@@ -54,14 +54,28 @@ def extract_features(preprocessed_signals):
         "gamma": (30, 45),
     }
     brainwave_features = pd.DataFrame()
+
     for channel, signal in preprocessed_signals.items():
-        psd, freqs = nk.signal_psd(signal, sampling_rate=250, method="welch")
-        freqs = np.array(freqs, dtype=float)  # Ensure freqs is a numeric array
+        # Compute PSD using NeuroKit2
+        psd = nk.signal_psd(signal, sampling_rate=250, method="welch")
+
+        # Extract Frequency and Power columns
+        freqs = psd["Frequency"].values
+        power = psd["Power"].values
+
+        # Compute band powers
         band_powers = {
-            band: np.trapz(psd[(freqs >= low) & (freqs <= high)])
+            band: np.trapezoid(
+                power[(freqs >= low) & (freqs <= high)],
+                x=freqs[(freqs >= low) & (freqs <= high)],
+            )
             for band, (low, high) in bands.items()
         }
-        brainwave_features[channel] = band_powers
+
+        # Add the band powers for the current channel to the DataFrame
+        channel_features = pd.DataFrame(band_powers, index=[channel])
+        brainwave_features = pd.concat([brainwave_features, channel_features])
+
     return brainwave_features
 
 
